@@ -1,0 +1,33 @@
+{
+    "name": "netsyos/cron",
+    "description": "ZF2 / Doctrine cron module",
+    "license": "GPL-3.0",
+    "keywords": ["cron", "zf2", "doctrine"],
+    "homepage": "https://github.com/draganshadow/cron",
+    "authors": [
+        {
+            "name": "draganshadow",
+            "email": "draganshdow@netsyos.com"
+        }
+    ],
+    "autoload": {
+        "psr-0": {
+            "Netsyos\\Cron": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/draganshadow/common"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.3",
+        "zendframework/zendframework": "2.*",
+        "doctrine/doctrine-orm-module": "0.8.*",
+        "netsyos/common": "dev-master",
+        "mtdowling/cron-expression": "1.0.*"
+    }
+}
