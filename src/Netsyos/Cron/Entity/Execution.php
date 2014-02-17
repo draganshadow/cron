@@ -7,8 +7,8 @@ use Netsyos\Common\Entity\AbstractEntity;
 /**
  * Task Entity.
  *
- * @ORM\Entity(repositoryClass="Netsyos\Cron\Repository\System\ExecutionRepository")
- * @ORM\Table(name="system_execution")
+ * @ORM\Entity(repositoryClass="Netsyos\Cron\Repository\ExecutionRepository")
+ * @ORM\Table(name="netsyos_cron_execution")
  * @property int $id
  * @property string $key
  * @property string $status

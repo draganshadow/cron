@@ -8,8 +8,8 @@ use Netsyos\Common\Entity\AbstractEntity;
 /**
  * Task Entity.
  *
- * @ORM\Entity(repositoryClass="Netsyos\Cron\Repository\System\CronRepository")
- * @ORM\Table(name="system_cron")
+ * @ORM\Entity(repositoryClass="Netsyos\Cron\Repository\CronRepository")
+ * @ORM\Table(name="netsyos_cron_cron")
  * @property int $id
  * @property string $key
  * @property string $reference
