@@ -12,7 +12,7 @@
     ],
     "autoload": {
         "psr-0": {
-            "Netsyos\\Cron": "src/"
+            "Netsyos\\Cron\\": "src/"
         }
     },
     "minimum-stability": "dev",
