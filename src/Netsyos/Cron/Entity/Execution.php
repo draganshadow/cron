@@ -2,7 +2,7 @@
 namespace Netsyos\Cron\Entity\System;
 
 use Doctrine\ORM\Mapping as ORM;
-use Netsyos\Entity\AbstractEntity;
+use Netsyos\Common\Entity\AbstractEntity;
 
 /**
  * Task Entity.
