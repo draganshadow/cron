@@ -7,35 +7,37 @@ return array(
             'Netsyos\Cron\Controller\CronController' => 'Netsyos\Cron\Controller\CronController'
         ),
     ),
-    'router' => array(
-        'routes' => array(
-            'execute' => array(
-                'options' => array(
-                    'route'    => 'execute <id>',
-                    'defaults' => array(
-                        'controller' => 'Netsyos\Cron\Controller\CronController',
-                        'action'     => 'execute'
+    'console' => array(
+        'router' => array(
+            'routes' => array(
+                'execute' => array(
+                    'options' => array(
+                        'route'    => 'execute <id>',
+                        'defaults' => array(
+                            'controller' => 'Netsyos\Cron\Controller\CronController',
+                            'action'     => 'execute'
+                        )
+                    )
+                ),
+                'cron' => array(
+                    'options' => array(
+                        'route'    => 'cron',
+                        'defaults' => array(
+                            'controller' => 'Netsyos\Cron\Controller\CronController',
+                            'action'     => 'cron'
+                        )
+                    )
+                ),
+                'list' => array(
+                    'options' => array(
+                        'route'    => 'list',
+                        'defaults' => array(
+                            'controller' => 'Netsyos\Cron\Controller\CronController',
+                            'action'     => 'list'
+                        )
                     )
                 )
             ),
-            'cron' => array(
-                'options' => array(
-                    'route'    => 'cron',
-                    'defaults' => array(
-                        'controller' => 'Netsyos\Cron\Controller\CronController',
-                        'action'     => 'cron'
-                    )
-                )
-            ),
-            'list' => array(
-                'options' => array(
-                    'route'    => 'list',
-                    'defaults' => array(
-                        'controller' => 'Netsyos\Cron\Controller\CronController',
-                        'action'     => 'list'
-                    )
-                )
-            )
         ),
     ),
     'doctrine' => array(
