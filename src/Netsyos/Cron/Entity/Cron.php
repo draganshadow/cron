@@ -52,6 +52,11 @@ class Cron extends AbstractEntity
     protected $arguments;
 
     /**
+     * @ORM\Column(type="boolean");
+     */
+    protected $active = false;
+
+    /**
      * Populate from an array.
      *
      * @param array $data
@@ -63,6 +68,7 @@ class Cron extends AbstractEntity
         $this->service = (isset($data['service'])) ? $data['service'] : null;
         $this->callback = (isset($data['callback'])) ? $data['callback'] : null;
         $this->arguments = (isset($data['arguments'])) ? $data['arguments'] : null;
+        $this->active = (isset($data['active'])) ? $data['active'] : null;
     }
 
     /**
