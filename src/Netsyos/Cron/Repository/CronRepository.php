@@ -1,5 +1,5 @@
 <?php
-namespace Netsyos\Cron\Repository\System;
+namespace Netsyos\Cron\Repository;
 
 use Netsyos\Common\Repository\EntityRepository;
 
