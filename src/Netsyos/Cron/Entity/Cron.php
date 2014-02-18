@@ -27,7 +27,7 @@ class Cron extends AbstractEntity
     protected $id;
 
     /**
-     * @ORM\Column(type="text", unique=true)
+     * @ORM\Column(type="string", unique=true)
      */
     protected $key;
 
@@ -37,7 +37,7 @@ class Cron extends AbstractEntity
     protected $frequency;
 
     /**
-     * @ORM\Column(type="string");
+     * @ORM\Column(type="string", nullable=true);
      */
     protected $service;
 
@@ -47,7 +47,7 @@ class Cron extends AbstractEntity
     protected $callback;
 
     /**
-     * @ORM\Column(type="json_array");
+     * @ORM\Column(type="json_array", nullable=true);
      */
     protected $arguments;
 
