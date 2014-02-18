@@ -1,5 +1,5 @@
 <?php
-namespace Netsyos\Cron\Entity\System;
+namespace Netsyos\Cron\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Netsyos\Common\Entity\AbstractEntity;
