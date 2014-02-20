@@ -36,6 +36,12 @@ class Module implements ConsoleBannerProviderInterface, ConsoleUsageProviderInte
         );
     }
 
+
+    public function getServiceConfig()
+    {
+        return include __DIR__ . '/../../../config/services.config.php';
+    }
+
     /**
      * This method is defined in ConsoleBannerProviderInterface
      *

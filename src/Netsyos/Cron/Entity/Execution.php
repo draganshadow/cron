@@ -18,6 +18,8 @@ use Netsyos\Common\Entity\AbstractEntity;
 class Execution extends AbstractEntity
 {
     const STATUS_PLANNED    = 'planned';
+    const STATUS_FORCED     = 'forced';
+    const STATUS_CANCELLED  = 'cancelled';
     const STATUS_SKIPPED    = 'skipped';
     const STATUS_RUNNING    = 'running';
     const STATUS_DONE       = 'done';
@@ -31,12 +33,12 @@ class Execution extends AbstractEntity
     protected $id;
 
     /**
-     * @ORM\Column(type="text")
+     * @ORM\Column(type="string")
      */
     protected $key;
 
     /**
-     * @ORM\Column(type="string");
+     * @ORM\Column(type="string", nullable=true);
      */
     protected $service;
 

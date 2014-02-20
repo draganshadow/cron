@@ -1,7 +1,7 @@
 <?php
 namespace Netsyos\Cron\Controller;
 
-use Netsyos\Controller\AbstractController;
+use Netsyos\Common\Controller\AbstractController;
 
 class CronController extends AbstractController
 {

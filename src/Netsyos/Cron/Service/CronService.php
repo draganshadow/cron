@@ -2,7 +2,10 @@
 namespace Netsyos\Cron\Service;
 
 use Cron\CronExpression;
+use Doctrine\ORM\Query;
 use Netsyos\Common\Service\AbstractService;
+use Netsyos\Cron\Entity\Execution;
+use Netsyos\Cron\Entity\Cron;
 
 class CronService extends AbstractService
 {
@@ -11,23 +14,36 @@ class CronService extends AbstractService
     }
 
     public function execute($id) {
-        $criteria = array(
+        $params = array(
             'id' => $id,
-            'status' => Execution::STATUS_PLANNED
+            'status' => array(Execution::STATUS_PLANNED, Execution::STATUS_FORCED)
         );
-        $executions = $this->getRepository('System\Execution')->findBy($criteria, array('scheduleTime' => 'DESC'));
+
+        $qb = $this->getEntityManager()->createQueryBuilder();
+        $qb->select('e')
+            ->from('Netsyos\Cron\Entity\Execution', 'e')
+            ->where('e.status IN (:status)')
+            ->andWhere('e.id = :id')
+            ->orderBy('e.scheduleTime', 'DESC');
+
+        $executions = $qb->setParameters($params)->getQuery()->getResult();
+
         if (count($executions)) {
             $execution = $executions[0];
+            $execution->status = Execution::STATUS_RUNNING;
+            $execution->executeTime = new \DateTime();
+            $this->getEntityManager()->persist($execution);
+            $this->getEntityManager()->flush();
             try {
                 if (count($execution->service) && count($execution->callback)) {
                     $service = $this->getServiceLocator()->get($execution->service);
                     $method = $execution->callback;
                     if(is_callable(array($service, $method))){
-                        $execution->stackTrace = call_user_func(array($service, $method), $execution->arguments);
+                        $execution->stackTrace = json_encode(call_user_func(array($service, $method), $execution->arguments));
                     }
                 } elseif (count($execution->callback)) {
                     if(is_callable($execution->callback)){
-                        $execution->stackTrace = call_user_func($execution->callback, $execution->arguments);
+                        $execution->stackTrace = json_encode(call_user_func($execution->callback, $execution->arguments));
                     }
                 }
                 $execution->status = Execution::STATUS_DONE;
@@ -36,8 +52,9 @@ class CronService extends AbstractService
                 $execution->stackTrace = $e->getTrace();
                 $execution->status = Execution::STATUS_ERROR;
             }
+            $execution->finishTime = new \DateTime();
             $this->getEntityManager()->persist($execution);
-            $this->flush(true);
+            $this->getEntityManager()->flush();
         }
         return $id;
     }
@@ -50,8 +67,8 @@ class CronService extends AbstractService
         $fields['service'] = $service;
         $fields['callback'] = $callback;
         $fields['arguments'] = $arguments;
-        $cron = $this->getRepository('System\Cron')->create($fields);
-        $this->flush(true);
+        $cron = $this->getRepository('Cron')->create($fields);
+        $this->getEntityManager()->flush();
     }
 
     /**
@@ -61,24 +78,50 @@ class CronService extends AbstractService
      * @param $callback
      * @param $arguments
      *
-     * @return \Netsyos\Cron\Entity\System\Execution
+     * @return \Netsyos\Cron\Entity\Execution
      */
-    public function addExecution($scheduleTime, $key, $service, $callback, $arguments) {
+    public function addExecution($scheduleTime, $key, $service, $callback, $arguments, $status = Execution::STATUS_PLANNED) {
         $fields = array();
         $fields['key'] = $key;
         $fields['scheduleTime'] = $scheduleTime;
         $fields['service'] = $service;
         $fields['callback'] = $callback;
         $fields['arguments'] = $arguments;
-        $fields['status'] = Execution::STATUS_PLANNED;
-        $execution = $this->getRepository('System\Execution')->create($fields);
-        $this->flush(true);
+        $fields['status'] = $status;
+        $execution = $this->getRepository('Execution')->create($fields);
+        $this->getEntityManager()->flush();
+        return $execution;
+    }
+
+    public function addForcedExecution($cron, $date)
+    {
+        $this->addExecution($date, $cron->key, $cron->service, $cron->callback, $cron->arguments, Execution::STATUS_FORCED);
+    }
+
+    public function addUniqueForcedExecution($cron, $date)
+    {
+        $now = new \DateTime();
+        $params = array(
+            'key' => $cron->key,
+            'status' => Execution::STATUS_FORCED
+        );
+        $qb = $this->getEntityManager()->createQueryBuilder();
+        $qb->select('e')
+            ->from('Netsyos\Cron\Entity\Execution', 'e')
+            ->where('e.status = :status')
+            ->andWhere('e.key = :key');
+
+        $executions = $qb->setParameters($params)->getQuery()->getResult();
+
+        if (count($executions) == 0) {
+            $this->addExecution($date, $cron->key, $cron->service, $cron->callback, $cron->arguments, Execution::STATUS_FORCED);
+        }
     }
 
     /**
-     * @param \Netsyos\Cron\Entity\System\Cron $cron
+     * @param \Netsyos\Cron\Entity\Cron $cron
      */
-    public function generateCronExecutions(\Netsyos\Cron\Entity\System\Cron $cron, $startDate = 'now', $endDate = 'next'){
+    public function generateCronExecutions(Cron $cron, $startDate = 'now', $endDate = 'next'){
         $endDate = $endDate !== 'next' ? $endDate : $cron->getNextExecutionDate($startDate);
         $scheduleTime = $cron->getNextExecutionDate($startDate);
         $i = 1;
@@ -89,45 +132,107 @@ class CronService extends AbstractService
     }
 
     public function processExecutions() {
-        $crons = $this->getRepository('System\Cron')->findAll();
+        $crons = $this->getRepository('Cron')->findAll();
         $this->getEntityManager()->clear();
-        $now = new \DateTime();
         foreach ($crons as $cron) {
-            $criteria = array(
-                'key' => $cron->key,
-                'status' => Execution::STATUS_PLANNED
-            );
-            $executions = $this->getRepository('System\Execution')->findBy($criteria, array('scheduleTime' => 'DESC'));
-            if (count($executions)) {
-                foreach ($executions as $execution) {
+            $executed = $this->handlePlannedTaskes($cron);
+            $this->handleForcedTaskes($cron, $executed);
+        }
+    }
+
+    protected function handlePlannedTaskes($cron)
+    {
+        $now = new \DateTime();
+        $executed = false;
+        $params = array(
+            'key' => $cron->key,
+            'status' => Execution::STATUS_PLANNED
+        );
+        $qb = $this->getEntityManager()->createQueryBuilder();
+        $qb->select('e')
+            ->from('Netsyos\Cron\Entity\Execution', 'e')
+            ->where('e.status = :status')
+            ->andWhere('e.key = :key')
+            ->orderBy('e.scheduleTime', 'DESC');
+        $executions = $qb->setParameters($params)->getQuery()->getResult();
+        if (count($executions)) {
+            foreach ($executions as $execution) {
+                if ($cron->active) {
+                    $ce = CronExpression::factory($cron->frequency);
                     if ($execution->scheduleTime <= $now) {
-                        system($this->getExecuteCommand($execution->id));
-                        $execution->status = Execution::STATUS_RUNNING;
+                        if (!$executed) {
+                            if ($ce->isDue($execution->scheduleTime)) {
+                                system($this->getExecuteCommand($execution->id));
+                                $this->generateCronExecutions($cron);
+                                $executed = true;
+                            } else {
+                                $execution->status = Execution::STATUS_CANCELLED;
+                                $execution->stackTrace = 'frequency changed';
+                                $this->getEntityManager()->persist($execution);
+                                $this->generateCronExecutions($cron);
+                            }
+                        } else {
+                            $execution->status = Execution::STATUS_SKIPPED;
+                            $this->getEntityManager()->persist($execution);
+                        }
+                    } elseif ($execution->scheduleTime > $ce->getNextRunDate()) {
+                        $execution->status = Execution::STATUS_CANCELLED;
+                        $execution->stackTrace = 'frequency changed';
                         $this->getEntityManager()->persist($execution);
+                        $this->generateCronExecutions($cron);
                     }
+                } else {
+                    $execution->status = Execution::STATUS_CANCELLED;
+                    $execution->stackTrace = 'cron disabled';
+                    $this->getEntityManager()->persist($execution);
                 }
-            } else {
-                $this->generateCronExecutions($cron);
+            }
+        } elseif ($cron->active) {
+            $this->generateCronExecutions($cron);
+        }
+        $this->getEntityManager()->flush();
+
+        return $executed;
+    }
+
+    protected function handleForcedTaskes($cron, $executed = false)
+    {
+        $now = new \DateTime();
+        $params = array(
+            'key' => $cron->key,
+            'scheduleTime' => $now,
+            'status' => Execution::STATUS_FORCED
+        );
+        $qb = $this->getEntityManager()->createQueryBuilder();
+        $qb->select('e')
+            ->from('Netsyos\Cron\Entity\Execution', 'e')
+            ->where('e.status = :status')
+            ->andWhere('e.key = :key')
+            ->andWhere('e.scheduleTime <= :scheduleTime')
+            ->orderBy('e.scheduleTime', 'DESC');
+
+        $executions = $qb->setParameters($params)->getQuery()->getResult();
+        if (count($executions)) {
+            foreach ($executions as $execution) {
+                if (!$executed) {
+                    system($this->getExecuteCommand($execution->id));
+                    $executed = true;
+                } else {
+                    $execution->status = Execution::STATUS_SKIPPED;
+                    $this->getEntityManager()->persist($execution);
+                }
             }
         }
-        $this->flush(true);
+        $this->getEntityManager()->flush();
     }
 
-    public function getNextRootCronExecution() {
-        //TODO improve
-        $cronExpression = CronExpression::factory($this->getRootCronExpression());
-        return $cronExpression->getNextRunDate();
-    }
-
-    public function getRootCronExpression() {
-        return '*/5 * * * *';
-    }
-
-    public function getRootDirectory() {
-        return realpath(__DIR__ . '/../../../../../') . '/';
+    public function getIndexPath() {
+        $config = $this->getServiceLocator()->get('config');
+        $path = array_key_exists('netsyos-cron', $config) ? $config['netsyos-cron']['indexPath'] : realpath(__DIR__ . '/../../../../../../../') . '/public/index.php';
+        return $path;
     }
 
     public function getExecuteCommand($id) {
-        return '(php ' . $this->getRootDirectory() . 'public/index.php execute ' . $id . ') >/dev/null 2>/dev/null &';
+        return '(php ' . $this->getIndexPath() . ' execute ' . $id . ') >/dev/null 2>/dev/null &';
     }
 }
