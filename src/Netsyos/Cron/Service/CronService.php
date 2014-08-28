@@ -9,6 +9,8 @@ use Netsyos\Cron\Entity\Cron;
 
 class CronService extends AbstractService
 {
+    public $logFile = 'data/log/cron.log';
+
     public function cron() {
         $this->processExecutions();
     }
@@ -226,13 +228,18 @@ class CronService extends AbstractService
         $this->getEntityManager()->flush();
     }
 
-    public function getIndexPath() {
+    public function getPath() {
         $config = $this->getServiceLocator()->get('config');
-        $path = array_key_exists('netsyos-cron', $config) ? $config['netsyos-cron']['indexPath'] : realpath(__DIR__ . '/../../../../../../../') . '/public/index.php';
+        $path = array_key_exists('netsyos-cron', $config) ? $config['netsyos-cron']['indexPath'] : realpath(__DIR__ . '/../../../../../../../');
+        return $path;
+    }
+
+    public function getIndexPath() {
+        $path = $this->getPath() . '/public/index.php';
         return $path;
     }
 
     public function getExecuteCommand($id) {
-        return '(php ' . $this->getIndexPath() . ' execute ' . $id . ') >/dev/null 2>/dev/null &';
+        return '((php ' . $this->getIndexPath() . ' execute ' . $id . ') >>' . $this->getPath() . $this->logFile . ' 2>&1) &';
     }
 }
