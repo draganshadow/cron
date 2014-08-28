@@ -9,7 +9,7 @@ use Netsyos\Cron\Entity\Cron;
 
 class CronService extends AbstractService
 {
-    public $logFile = 'data/log/cron.log';
+    public $logFile = '/data/log/cron.log';
 
     public function cron() {
         $this->processExecutions();
